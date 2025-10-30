@@ -8,6 +8,17 @@ export function SimpleGameCanvas() {
   const animationRef = useRef<number | null>(null);
   const collisionUpdatesRef = useRef<{coins: number, score: number}>({coins: 0, score: 0});
   const gameEndRef = useRef<{shouldEnd: boolean, finalScore: number, stageCompleted: boolean}>({shouldEnd: false, finalScore: 0, stageCompleted: false});
+  // Physics tuning (easier jump)
+  const gravityRef = useRef(0.8);
+  const jumpImpulseRef = useRef(-18);
+  const terminalVelocityRef = useRef(20);
+  const jumpCooldownMsRef = useRef(140);
+  const coyoteTimeMsRef = useRef(150);
+  const jumpBufferMsRef = useRef(120);
+  const lastJumpTimeRef = useRef(0);
+  const lastGroundedTimeRef = useRef(0);
+  const lastJumpPressTimeRef = useRef(0);
+  const isJumpHeldRef = useRef(false);
   const [gameState, setGameState] = useState({
     playerX: 100,
     playerY: 350,  // Fixed: player standing on visible grass surface
@@ -433,8 +444,12 @@ export function SimpleGameCanvas() {
       setGameState(prev => {
         const newState = { ...prev };
 
-        // Apply gravity
-        newState.playerVelocityY += 0.6;
+        // Apply gravity and clamp velocity (variable jump: lighter gravity while rising and holding jump)
+        const gravityMultiplier = (isJumpHeldRef.current && newState.playerVelocityY < 0) ? 0.6 : 1;
+        newState.playerVelocityY += gravityRef.current * gravityMultiplier;
+        if (newState.playerVelocityY > terminalVelocityRef.current) {
+          newState.playerVelocityY = terminalVelocityRef.current;
+        }
         newState.playerY += newState.playerVelocityY;
 
         // Ground collision - fix ground level to match visible grass surface
@@ -443,6 +458,18 @@ export function SimpleGameCanvas() {
           newState.playerVelocityY = 0;
           newState.isJumping = false;
           newState.isGrounded = true;
+          lastGroundedTimeRef.current = performance.now();
+          // If a buffered jump exists, consume it now
+          const now = performance.now();
+          const bufferActive = (now - lastJumpPressTimeRef.current) <= jumpBufferMsRef.current;
+          const cooldownReady = (now - lastJumpTimeRef.current) >= jumpCooldownMsRef.current;
+          if (bufferActive && cooldownReady) {
+            lastJumpTimeRef.current = now;
+            newState.playerVelocityY = jumpImpulseRef.current;
+            newState.isJumping = true;
+            newState.isGrounded = false;
+            isJumpHeldRef.current = true;
+          }
         } else {
           newState.isGrounded = false;
         }
@@ -483,6 +510,18 @@ export function SimpleGameCanvas() {
 
     // Collision detection function
     const checkCollisions = (state: typeof gameState) => {
+      // Player core hitbox (slightly shrunken to avoid unfair collisions)
+      const playerRect = {
+        left: state.playerX + 2,
+        right: state.playerX + 28,
+        top: state.playerY - 18,   // include head/hat
+        bottom: state.playerY + 54 // include shoes
+      };
+
+      const aabbIntersect = (a: {left:number; right:number; top:number; bottom:number}, b: {left:number; right:number; top:number; bottom:number}) => {
+        return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
+      };
+
       // Check coin collisions
       state.coins.forEach(coin => {
         if (!coin.collected &&
@@ -495,35 +534,54 @@ export function SimpleGameCanvas() {
         }
       });
 
-      // Check obstacle collisions
-      state.obstacles.forEach(obstacle => {
-        let collision = false;
+      // Check obstacle collisions with precise shapes
+      for (const obstacle of state.obstacles) {
+        let collided = false;
 
-        if (obstacle.type === 'spike' || obstacle.type === 'pit') {
-          collision = (
-            Math.abs(obstacle.x - state.playerX) < 30 &&
-            state.playerY > obstacle.y - 50
-          );
+        if (obstacle.type === 'spike') {
+          // Approximate spike as a narrow triangle's bounding box
+          const spikeRect = {
+            left: obstacle.x - 16,
+            right: obstacle.x + 16,
+            top: obstacle.y,
+            bottom: obstacle.y + 50
+          };
+          collided = aabbIntersect(playerRect, spikeRect);
         } else if (obstacle.type === 'block') {
-          collision = (
-            Math.abs(obstacle.x - state.playerX) < 25 &&
-            state.playerY < obstacle.y &&
-            state.playerY + 50 > obstacle.y - 50
-          );
+          // Block exact rectangle
+          const blockRect = {
+            left: obstacle.x - 25,
+            right: obstacle.x + 25,
+            top: obstacle.y - 50,
+            bottom: obstacle.y
+          };
+          collided = aabbIntersect(playerRect, blockRect);
+        } else if (obstacle.type === 'pit') {
+          // Pit is a hole in the ground; collide if feet are over the hole area
+          const pitRect = {
+            left: obstacle.x - 30,
+            right: obstacle.x + 30,
+            top: obstacle.y,
+            bottom: obstacle.y + 50
+          };
+          const playerHorizCenter = (playerRect.left + playerRect.right) / 2;
+          const horizontallyOverPit = playerHorizCenter > pitRect.left + 4 && playerHorizCenter < pitRect.right - 4;
+          const feetBelowGround = playerRect.bottom > pitRect.top + 2;
+          collided = horizontallyOverPit && feetBelowGround;
         }
 
-        if (collision) {
+        if (collided) {
           console.log('💥 Collision! Score values:', {
             gameStoreScore: score,
             gameStoreSessionCoins: sessionCoins,
-            collision: true
+            obstacleType: obstacle.type
           });
           setPlaying(false);
-          // Use the current score from the store
           const currentStore = useGameStore.getState();
           setGameOver('obstacle', currentStore.score, currentStore.sessionCoins);
+          break;
         }
-      });
+      }
 
       // Check knowledge wall collisions
       state.knowledgeWalls.forEach(wall => {
@@ -969,18 +1027,44 @@ export function SimpleGameCanvas() {
 
   // Keyboard controls
   useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && gameState.isGrounded && isPlaying) {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code !== 'Space' || !isPlaying) return;
+      isJumpHeldRef.current = true;
+      const now = performance.now();
+      lastJumpPressTimeRef.current = now; // buffer the press
+
+      const canJumpByCooldown = now - lastJumpTimeRef.current >= jumpCooldownMsRef.current;
+      const recentlyGrounded = now - lastGroundedTimeRef.current <= coyoteTimeMsRef.current;
+
+      if ((gameState.isGrounded || recentlyGrounded) && canJumpByCooldown) {
+        lastJumpTimeRef.current = now;
         setGameState(prev => ({
           ...prev,
-          playerVelocityY: -18,
-          isJumping: true
+          playerVelocityY: jumpImpulseRef.current,
+          isJumping: true,
+          isGrounded: false
         }));
       }
     };
 
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code !== 'Space') return;
+      isJumpHeldRef.current = false;
+      // Short hop: cut upward velocity when released early
+      setGameState(prev => {
+        if (prev.playerVelocityY < -6) {
+          return { ...prev, playerVelocityY: -6 };
+        }
+        return prev;
+      });
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
   }, [gameState.isGrounded, isPlaying]);
 
   // Start game when component mounts
@@ -994,6 +1078,10 @@ export function SimpleGameCanvas() {
         gameSpeed: 3,
         gameTime: 0
       }));
+      lastGroundedTimeRef.current = performance.now();
+      lastJumpTimeRef.current = 0;
+      lastJumpPressTimeRef.current = 0;
+      isJumpHeldRef.current = false;
     }
   }, [isPlaying]);
 
