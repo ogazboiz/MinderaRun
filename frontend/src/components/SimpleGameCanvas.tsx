@@ -468,7 +468,6 @@ export function SimpleGameCanvas() {
             newState.playerVelocityY = jumpImpulseRef.current;
             newState.isJumping = true;
             newState.isGrounded = false;
-            isJumpHeldRef.current = true;
           }
         } else {
           newState.isGrounded = false;
@@ -1029,6 +1028,7 @@ export function SimpleGameCanvas() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code !== 'Space' || !isPlaying) return;
+      e.preventDefault();
       isJumpHeldRef.current = true;
       const now = performance.now();
       lastJumpPressTimeRef.current = now; // buffer the press
