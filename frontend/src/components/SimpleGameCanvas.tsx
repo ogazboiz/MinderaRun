@@ -1,24 +1,16 @@
-'use client';
+  'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '@/store/gameStore';
+import { questions } from '@/data/questions';
+import { useGameSounds } from '@/hooks/useGameSounds';
 
 export function SimpleGameCanvas() {
+  const { playSound } = useGameSounds();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | null>(null);
   const collisionUpdatesRef = useRef<{coins: number, score: number}>({coins: 0, score: 0});
   const gameEndRef = useRef<{shouldEnd: boolean, finalScore: number, stageCompleted: boolean}>({shouldEnd: false, finalScore: 0, stageCompleted: false});
-  // Physics tuning (easier jump)
-  const gravityRef = useRef(0.8);
-  const jumpImpulseRef = useRef(-18);
-  const terminalVelocityRef = useRef(20);
-  const jumpCooldownMsRef = useRef(140);
-  const coyoteTimeMsRef = useRef(150);
-  const jumpBufferMsRef = useRef(120);
-  const lastJumpTimeRef = useRef(0);
-  const lastGroundedTimeRef = useRef(0);
-  const lastJumpPressTimeRef = useRef(0);
-  const isJumpHeldRef = useRef(false);
   const [gameState, setGameState] = useState({
     playerX: 100,
     playerY: 350,  // Fixed: player standing on visible grass surface
@@ -49,7 +41,8 @@ export function SimpleGameCanvas() {
     isSavingSession,
     setGameOver,
     sessionCoins,
-    isGameOver
+    isGameOver,
+    walletAddress
   } = useGameStore();
 
   // Helper functions for drawing background elements
@@ -444,12 +437,8 @@ export function SimpleGameCanvas() {
       setGameState(prev => {
         const newState = { ...prev };
 
-        // Apply gravity and clamp velocity (variable jump: lighter gravity while rising and holding jump)
-        const gravityMultiplier = (isJumpHeldRef.current && newState.playerVelocityY < 0) ? 0.6 : 1;
-        newState.playerVelocityY += gravityRef.current * gravityMultiplier;
-        if (newState.playerVelocityY > terminalVelocityRef.current) {
-          newState.playerVelocityY = terminalVelocityRef.current;
-        }
+        // Apply gravity
+        newState.playerVelocityY += 0.6;
         newState.playerY += newState.playerVelocityY;
 
         // Ground collision - fix ground level to match visible grass surface
@@ -458,17 +447,6 @@ export function SimpleGameCanvas() {
           newState.playerVelocityY = 0;
           newState.isJumping = false;
           newState.isGrounded = true;
-          lastGroundedTimeRef.current = performance.now();
-          // If a buffered jump exists, consume it now
-          const now = performance.now();
-          const bufferActive = (now - lastJumpPressTimeRef.current) <= jumpBufferMsRef.current;
-          const cooldownReady = (now - lastJumpTimeRef.current) >= jumpCooldownMsRef.current;
-          if (bufferActive && cooldownReady) {
-            lastJumpTimeRef.current = now;
-            newState.playerVelocityY = jumpImpulseRef.current;
-            newState.isJumping = true;
-            newState.isGrounded = false;
-          }
         } else {
           newState.isGrounded = false;
         }
@@ -509,18 +487,6 @@ export function SimpleGameCanvas() {
 
     // Collision detection function
     const checkCollisions = (state: typeof gameState) => {
-      // Player core hitbox (slightly shrunken to avoid unfair collisions)
-      const playerRect = {
-        left: state.playerX + 2,
-        right: state.playerX + 28,
-        top: state.playerY - 18,   // include head/hat
-        bottom: state.playerY + 54 // include shoes
-      };
-
-      const aabbIntersect = (a: {left:number; right:number; top:number; bottom:number}, b: {left:number; right:number; top:number; bottom:number}) => {
-        return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
-      };
-
       // Check coin collisions
       state.coins.forEach(coin => {
         if (!coin.collected &&
@@ -529,120 +495,62 @@ export function SimpleGameCanvas() {
           coin.collected = true;
           updateSessionCoins(1);
           updateScore(10);
+          playSound('coin'); // 🔊 Coin collection sound
           console.log('🪙 Coin collected! New score should be:', score + 10);
         }
       });
 
-      // Check obstacle collisions with precise shapes
-      for (const obstacle of state.obstacles) {
-        let collided = false;
+      // Check obstacle collisions
+      state.obstacles.forEach(obstacle => {
+        let collision = false;
 
-        if (obstacle.type === 'spike') {
-          // Approximate spike as a narrow triangle's bounding box
-          const spikeRect = {
-            left: obstacle.x - 16,
-            right: obstacle.x + 16,
-            top: obstacle.y,
-            bottom: obstacle.y + 50
-          };
-          collided = aabbIntersect(playerRect, spikeRect);
+        if (obstacle.type === 'spike' || obstacle.type === 'pit') {
+          collision = (
+            Math.abs(obstacle.x - state.playerX) < 30 &&
+            state.playerY > obstacle.y - 50
+          );
         } else if (obstacle.type === 'block') {
-          // Block exact rectangle
-          const blockRect = {
-            left: obstacle.x - 25,
-            right: obstacle.x + 25,
-            top: obstacle.y - 50,
-            bottom: obstacle.y
-          };
-          collided = aabbIntersect(playerRect, blockRect);
-        } else if (obstacle.type === 'pit') {
-          // Pit is a hole in the ground; collide if feet are over the hole area
-          const pitRect = {
-            left: obstacle.x - 30,
-            right: obstacle.x + 30,
-            top: obstacle.y,
-            bottom: obstacle.y + 50
-          };
-          const playerHorizCenter = (playerRect.left + playerRect.right) / 2;
-          const horizontallyOverPit = playerHorizCenter > pitRect.left + 4 && playerHorizCenter < pitRect.right - 4;
-          const feetBelowGround = playerRect.bottom > pitRect.top + 2;
-          collided = horizontallyOverPit && feetBelowGround;
+          collision = (
+            Math.abs(obstacle.x - state.playerX) < 25 &&
+            state.playerY < obstacle.y &&
+            state.playerY + 50 > obstacle.y - 50
+          );
         }
 
-        if (collided) {
+        if (collision) {
           console.log('💥 Collision! Score values:', {
             gameStoreScore: score,
             gameStoreSessionCoins: sessionCoins,
-            obstacleType: obstacle.type
+            collision: true
           });
+          playSound('obstacle'); // 🔊 Obstacle collision sound
           setPlaying(false);
+          // Use the current score from the store
           const currentStore = useGameStore.getState();
           setGameOver('obstacle', currentStore.score, currentStore.sessionCoins);
-          break;
         }
-      }
+      });
 
       // Check knowledge wall collisions
       state.knowledgeWalls.forEach(wall => {
         if (!wall.answered &&
             Math.abs(wall.x - state.playerX) < 50 &&
             state.playerY > wall.y && state.playerY < wall.y + 300) {
+          // Seeded randomness per user and wall for fairness and anti-memorization
+          const seedBase = `${walletAddress || 'guest'}-${currentStage}-${wall.id}`;
+          let hash = 0;
+          for (let i = 0; i < seedBase.length; i++) {
+            hash = (hash * 31 + seedBase.charCodeAt(i)) >>> 0;
+          }
+          const qIndex = hash % questions.length;
+          const q = questions[qIndex];
 
-          const questions = {
-            1: {
-              question: "What is HBAR used for?",
-              options: ["Paying transaction fees", "Mining rewards", "Staking only", "Nothing"],
-              correctAnswer: 0
-            },
-            2: {
-              question: "What is a smart contract?",
-              options: ["Self-executing code", "A legal document", "A type of token", "A database"],
-              correctAnswer: 0
-            },
-            3: {
-              question: "What is Hedera's consensus mechanism?",
-              options: ["Hashgraph", "Proof of Work", "Proof of Stake", "Delegated Proof of Stake"],
-              correctAnswer: 0
-            },
-            4: {
-              question: "What does HTS stand for?",
-              options: ["Hedera Token Service", "Hash Token System", "Hedera Trading System", "Hash Time Stamp"],
-              correctAnswer: 0
-            },
-            5: {
-              question: "What does HCS provide?",
-              options: ["Token creation", "Consensus timestamps", "Smart contracts", "File storage"],
-              correctAnswer: 1
-            },
-            6: {
-              question: "What is Hedera's typical transaction fee?",
-              options: ["$0.0001", "$0.01", "$1.00", "Free"],
-              correctAnswer: 0
-            },
-            7: {
-              question: "What programming language is used for Hedera smart contracts?",
-              options: ["JavaScript", "Python", "Solidity", "Go"],
-              correctAnswer: 2
-            },
-            8: {
-              question: "What is the maximum TPS of Hedera?",
-              options: ["15 TPS", "1,000 TPS", "10,000+ TPS", "100 TPS"],
-              correctAnswer: 2
-            },
-            9: {
-              question: "What makes Hashgraph different from blockchain?",
-              options: ["Uses blocks", "Asynchronous BFT", "Proof of Work", "Single leader"],
-              correctAnswer: 1
-            }
-          };
-
-          const questionData = questions[wall.id as keyof typeof questions] || questions[1];
-
+          playSound('quiz'); // 🔊 Knowledge wall sound
           setCurrentQuestion({
-            id: wall.id.toString(),
-            question: questionData.question,
-            options: questionData.options,
-            correctAnswer: questionData.correctAnswer,
+            id: q.id,
+            question: q.question,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
             points: 50,
             timeLimit: 30
           });
@@ -661,6 +569,7 @@ export function SimpleGameCanvas() {
           gameStoreSessionCoins: sessionCoins,
           completed: true
         });
+        playSound('complete'); // 🔊 Stage completion sound
         setPlaying(false);
         // Use the current score from the store
         const currentStore = useGameStore.getState();
@@ -1026,44 +935,45 @@ export function SimpleGameCanvas() {
 
   // Keyboard controls
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code !== 'Space' || !isPlaying) return;
-      e.preventDefault();
-      isJumpHeldRef.current = true;
-      const now = performance.now();
-      lastJumpPressTimeRef.current = now; // buffer the press
-
-      const canJumpByCooldown = now - lastJumpTimeRef.current >= jumpCooldownMsRef.current;
-      const recentlyGrounded = now - lastGroundedTimeRef.current <= coyoteTimeMsRef.current;
-
-      if ((gameState.isGrounded || recentlyGrounded) && canJumpByCooldown) {
-        lastJumpTimeRef.current = now;
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && gameState.isGrounded && isPlaying) {
+        playSound('jump'); // 🔊 Jump sound
         setGameState(prev => ({
           ...prev,
-          playerVelocityY: jumpImpulseRef.current,
-          isJumping: true,
-          isGrounded: false
+          playerVelocityY: -18,
+          isJumping: true
         }));
       }
     };
 
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code !== 'Space') return;
-      isJumpHeldRef.current = false;
-      // Short hop: cut upward velocity when released early
-      setGameState(prev => {
-        if (prev.playerVelocityY < -6) {
-          return { ...prev, playerVelocityY: -6 };
-        }
-        return prev;
-      });
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [gameState.isGrounded, isPlaying]);
+
+  // Touch/Click controls for mobile devices
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleTouchOrClick = (e: TouchEvent | MouseEvent) => {
+      if (gameState.isGrounded && isPlaying) {
+        e.preventDefault(); // Prevent default touch behavior
+        playSound('jump'); // 🔊 Jump sound
+        setGameState(prev => ({
+          ...prev,
+          playerVelocityY: -18,
+          isJumping: true
+        }));
+      }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    // Add both touch and click events for maximum compatibility
+    canvas.addEventListener('touchstart', handleTouchOrClick);
+    canvas.addEventListener('click', handleTouchOrClick);
+    
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
+      canvas.removeEventListener('touchstart', handleTouchOrClick);
+      canvas.removeEventListener('click', handleTouchOrClick);
     };
   }, [gameState.isGrounded, isPlaying]);
 
@@ -1078,37 +988,38 @@ export function SimpleGameCanvas() {
         gameSpeed: 3,
         gameTime: 0
       }));
-      lastGroundedTimeRef.current = performance.now();
-      lastJumpTimeRef.current = 0;
-      lastJumpPressTimeRef.current = 0;
-      isJumpHeldRef.current = false;
     }
   }, [isPlaying]);
 
   return (
-    <div className="flex justify-center items-center min-h-[600px] relative z-10">
-      <div className="relative">
+    <div className="flex justify-center items-center min-h-[400px] md:min-h-[600px] relative z-10 w-full px-2 sm:px-4">
+      <div className="relative w-full max-w-[1200px] md:max-w-[1400px] lg:max-w-[1600px]">
         <canvas
           ref={canvasRef}
           width={800}
           height={600}
-          className="nes-container pixel-art shadow-2xl"
+          className="nes-container pixel-art shadow-2xl w-full h-auto"
           style={{
             background: 'linear-gradient(to bottom, #87CEEB, #98FB98)',
-            imageRendering: 'pixelated'
+            imageRendering: 'pixelated',
+            maxWidth: '100%',
+            height: 'auto'
           }}
         />
 
         {/* Game Overlay UI */}
         {!isPlaying && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-            <div className="nes-container with-title is-centered pixel-art" style={{ backgroundColor: 'rgba(255, 255, 255, 0.95)' }}>
-              <p className="title pixel-font text-primary">MINDORA RUNNER</p>
-              <h2 className="pixel-font text-xl mb-4 text-gray-800">Ready to Learn & Earn?</h2>
-              <p className="text-sm mb-6 text-gray-700 pixel-font">Press SPACE to jump and collect coins!</p>
+            <div className="nes-container with-title is-centered pixel-art mx-4 max-w-sm" style={{ backgroundColor: 'rgba(255, 255, 255, 0.95)' }}>
+              <p className="title pixel-font text-primary text-sm sm:text-base">MINDORA RUNNER</p>
+              <h2 className="pixel-font text-base sm:text-xl mb-3 sm:mb-4 text-gray-800">Ready to Learn & Earn?</h2>
+              <p className="text-xs sm:text-sm mb-4 sm:mb-6 text-gray-700 pixel-font">
+                <span className="hidden sm:inline">Press SPACE to jump and collect coins!</span>
+                <span className="sm:hidden">Tap screen to jump and collect coins!</span>
+              </p>
               <button
-                onClick={() => setPlaying(true)}
-                className="nes-btn is-primary pixel-font"
+                onClick={() => { playSound('start'); setPlaying(true); }}
+                className="nes-btn is-primary pixel-font text-xs sm:text-base"
               >
                 ▶ START GAME
               </button>
