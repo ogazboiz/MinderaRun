@@ -113,6 +113,7 @@ export interface GameState {
     loadLeaderboard: (stage: number, limit: number) => Promise<LeaderboardEntry[]>;
     claimTokens: (stage: number) => Promise<boolean>;
     claimNFT: (stage: number) => Promise<boolean>;
+    purchaseItem: (itemName: string, itemCost: number) => Promise<boolean>;
   }) => void;
   contractCallbacks: {
     registerPlayer?: (username: string) => Promise<boolean>;
@@ -122,6 +123,7 @@ export interface GameState {
     loadLeaderboard?: (stage: number, limit: number) => Promise<LeaderboardEntry[]>;
     claimTokens?: (stage: number) => Promise<boolean>;
     claimNFT?: (stage: number) => Promise<boolean>;
+    purchaseItem?: (itemName: string, itemCost: number) => Promise<boolean>;
   };
 
   // High-level actions that use the callbacks

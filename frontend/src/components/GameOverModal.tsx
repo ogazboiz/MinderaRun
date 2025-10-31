@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
+import { useGameSounds } from '@/hooks/useGameSounds';
 
 export function GameOverModal() {
   const {
@@ -18,6 +19,8 @@ export function GameOverModal() {
     setCurrentStage,
     saveGameSession
   } = useGameStore();
+  
+  const { playSound } = useGameSounds();
 
   // Reset save states when modal opens
   useEffect(() => {
@@ -73,6 +76,7 @@ export function GameOverModal() {
   };
 
   const handleSaveProgress = async () => {
+    playSound('button');
     const stageCompleted = gameOverReason === 'completed';
     console.log('🎮 GameOverModal - Starting save process with values:', {
       finalScore,
@@ -109,6 +113,7 @@ export function GameOverModal() {
   };
 
   const handleNextStage = () => {
+    playSound('button');
     // Progress to next stage
     if (currentStage < 3) {
       setCurrentStage(currentStage + 1);
@@ -117,185 +122,124 @@ export function GameOverModal() {
   };
 
   const handleSkipSave = () => {
-    const confirmed = window.confirm(
-      '⚠️ WARNING: You will lose ALL progress!\n\n' +
-      `• Your ${finalScore} points will be lost\n` +
-      `• Your ${sessionCoins} coins will be lost\n` +
-      `• Stage progress will NOT be saved\n\n` +
-      'Are you sure you want to continue without saving to the blockchain?'
-    );
-
-    if (confirmed) {
-      restartGame();
-    }
+    playSound('button');
+    // User has been warned in the UI already, just restart
+    restartGame();
   };
 
   return (
-    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 pointer-events-auto">
-      <div className="nes-container with-title is-centered pixel-art max-w-lg mx-4" style={{ backgroundColor: 'white', border: '4px solid #000' }}>
-        <p className="title pixel-font text-primary" style={{ fontSize: '20px', fontWeight: 'bold' }}>{getGameOverTitle()}</p>
+    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 pointer-events-auto p-2 sm:p-4">
+      <div className="nes-container with-title is-centered pixel-art max-w-sm sm:max-w-md lg:max-w-lg w-full" style={{ backgroundColor: 'white', border: '3px solid #000' }}>
+        <p className="title pixel-font text-primary text-sm sm:text-base" style={{ fontWeight: 'bold' }}>{getGameOverTitle()}</p>
 
         {/* Game Over Content */}
-        <div className="text-center mb-6">
-          <div className="text-6xl mb-4">
+        <div className="text-center mb-3 sm:mb-4">
+          <div className="text-4xl sm:text-5xl mb-2 sm:mb-3">
             {gameOverReason === 'completed' ? '🏆' :
              gameOverReason === 'obstacle' ? '💥' :
              gameOverReason === 'question' ? '❌' : '🎯'}
           </div>
 
-          <p className="pixel-font text-sm text-gray-700 mb-4">
+          <p className="pixel-font text-xs sm:text-sm text-gray-700 mb-2">
             {getGameOverMessage()}
           </p>
         </div>
 
         {/* Score and Progress */}
-        <div className="nes-container is-dark mb-4 text-center">
-          <div className="pixel-font text-white space-y-2">
-            <div>📊 Final Score: {finalScore}</div>
-            <div>🪙 Coins Collected: {sessionCoins}</div>
-            <div>💰 Total Coins: {(player?.inGameCoins || 0) + sessionCoins}</div>
+        <div className="nes-container is-dark mb-3 text-center">
+          <div className="pixel-font text-white space-y-1 text-sm sm:text-base">
+            <div>📊 Score: {finalScore} • 🪙 Coins: {sessionCoins}</div>
             {gameOverReason === 'completed' && (
-              <div className="space-y-1">
-                <div className="text-yellow-300">💎 {getStageTokenReward(currentStage)} QuestCoin Tokens Earned!</div>
-                <div className="text-blue-300">🏆 {getStageBadgeName(currentStage)} NFT Badge Earned!</div>
+              <div className="text-yellow-300 text-xs sm:text-sm mt-1">
+                💎 {getStageTokenReward(currentStage)} Tokens + 🏆 {getStageBadgeName(currentStage)}
               </div>
             )}
           </div>
         </div>
 
-        {/* Warning about unsaved progress */}
-        <div className="nes-container is-warning mb-4 text-center">
-            <div className="pixel-font text-black text-sm" style={{ fontWeight: 'bold' }}>
-              ⚠️ IMPORTANT: Your progress is NOT saved yet!
-              <div className="mt-2 text-xs">
-                If you don&apos;t save to blockchain, you will lose:
-                <div className="mt-1">
-                  • {finalScore} points earned • {sessionCoins} coins collected • Stage progress
-                </div>
-              </div>
-            </div>
-        </div>
-
-        {/* Blockchain Save Options - Using AGRO Pattern */}
-        {saveSuccess ? (
-          <div className="nes-container is-success mb-4 text-center" style={{ backgroundColor: '#28a745', border: '4px solid #155724' }}>
-            <div className="pixel-font text-white text-lg" style={{ fontWeight: 'bold' }}>
-              ✅ SUCCESSFULLY SAVED TO BLOCKCHAIN!
-              <div className="mt-2 text-sm text-white">
-                🎉 Your progress has been permanently saved on Hedera!
-                {gameOverReason === 'completed' && (
-                  <div className="mt-1">
-                    🏆 {getStageTokenReward(currentStage)} QuestCoin tokens + {getStageBadgeName(currentStage)} NFT earned!
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : isSavingSession ? (
-          <div className="nes-container is-primary mb-4 text-center" style={{ backgroundColor: '#007bff', border: '4px solid #0056b3' }}>
-            <div className="pixel-font text-white text-lg" style={{ fontWeight: 'bold' }}>
-              💾 SAVING TO BLOCKCHAIN...
-              <div className="mt-3">
-                <div className="animate-pulse text-xl">🔗 ⛓️ 🔗</div>
-              </div>
-              <div className="mt-3 text-sm bg-white text-black p-3 rounded border-2 border-black" style={{ fontWeight: 'bold' }}>
-                📱 TRANSACTION IN PROGRESS<br/>
-                <div className="mt-1" style={{ fontWeight: 'normal' }}>
-                  Your transaction is being processed on the blockchain.<br/>
-                  <strong>Please wait for confirmation...</strong>
-                </div>
-              </div>
-              {gameOverReason === 'completed' && (
-                <div className="mt-2 text-sm text-white">
-                  Minting {getStageTokenReward(currentStage)} QuestCoin tokens + {getStageBadgeName(currentStage)} NFT...
-                </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="nes-container is-success mb-4 text-center" style={{ backgroundColor: '#28a745', border: '4px solid #155724' }}>
-            <div className="pixel-font text-white text-lg" style={{ fontWeight: 'bold' }}>
+        {/* Merged Warning and Save Info */}
+        <div className="nes-container mb-3 text-center" style={{ backgroundColor: gameOverReason === 'completed' ? '#28a745' : '#ffc107', border: '3px solid #000' }}>
+            <div className="pixel-font text-black text-xs sm:text-sm" style={{ fontWeight: 'bold' }}>
               {gameOverReason === 'completed' ? (
                 <div>
-                  💰 Save to earn {getStageTokenReward(currentStage)} QuestCoin tokens + {getStageBadgeName(currentStage)} NFT!
-                  <div className="mt-1">
-                    <div className="text-sm text-white">🔗 Requires wallet signature • HTS tokens will be minted</div>
-                  </div>
+                  💰 Save to earn {getStageTokenReward(currentStage)} QuestCoin + {getStageBadgeName(currentStage)} NFT!
+                  <div className="mt-1 text-xs">⚠️ Progress not saved yet • Requires wallet signature</div>
                 </div>
               ) : (
                 <div>
-                  💰 Save your progress and coins on Hedera blockchain!
-                  <div className="mt-2">
-                    <div className="text-sm text-white">🔗 Requires wallet signature</div>
-                  </div>
+                  ⚠️ Progress NOT saved: {finalScore} points • {sessionCoins} coins
+                  <div className="mt-1 text-xs">💰 Save to blockchain or lose progress</div>
                 </div>
               )}
             </div>
+        </div>
+
+        {/* Transaction Status */}
+        {saveSuccess ? (
+          <div className="nes-container mb-3 text-center" style={{ backgroundColor: '#28a745', border: '3px solid #155724' }}>
+            <div className="pixel-font text-white text-sm sm:text-base" style={{ fontWeight: 'bold' }}>
+              ✅ SAVED TO BLOCKCHAIN!
+              <div className="mt-1 text-xs">🎉 Progress permanently saved on Hedera!</div>
+            </div>
           </div>
-        )}
+        ) : isSavingSession ? (
+          <div className="nes-container mb-3 text-center" style={{ backgroundColor: '#007bff', border: '3px solid #0056b3' }}>
+            <div className="pixel-font text-white text-sm sm:text-base" style={{ fontWeight: 'bold' }}>
+              💾 SAVING... <span className="animate-pulse">⛓️</span>
+              <div className="mt-1 text-xs">Please wait for confirmation</div>
+            </div>
+          </div>
+        ) : null}
 
         {/* Action Buttons */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           {/* Primary Save Action */}
-          <div className="flex space-x-3">
+          <div className="flex gap-2">
             <button
               onClick={handleSaveProgress}
-              className="nes-btn is-success pixel-font flex-1"
+              className="nes-btn is-success pixel-font flex-1 text-xs sm:text-sm"
               disabled={isSavingSession || saveSuccess}
             >
               {saveSuccess ? '✅ SAVED!' :
                isSavingSession ? '💾 SAVING...' :
-               gameOverReason === 'completed' ? '💎 SAVE & EARN TOKENS' : '💰 SAVE PROGRESS'}
+               gameOverReason === 'completed' ? '💎 SAVE & EARN' : '💰 SAVE'}
             </button>
           </div>
 
           {/* Secondary Actions */}
-          <div className="flex space-x-3">
+          <div className="flex gap-2">
             {gameOverReason === 'completed' && currentStage < 3 ? (
               <>
                 <button
                   onClick={handleNextStage}
-                  className="nes-btn pixel-font flex-1"
+                  className="nes-btn pixel-font flex-1 text-xs sm:text-sm"
                   disabled={isSavingSession}
                 >
-                  SKIP TO NEXT
+                  NEXT STAGE
                 </button>
                 <button
                   onClick={saveSuccess ? restartGame : handleSkipSave}
-                  className="nes-btn pixel-font flex-1"
+                  className="nes-btn pixel-font flex-1 text-xs sm:text-sm"
                   disabled={isSavingSession}
                 >
-                  {saveSuccess ? 'PLAY AGAIN' : 'REPLAY STAGE'}
+                  {saveSuccess ? 'PLAY AGAIN' : 'REPLAY'}
                 </button>
               </>
             ) : (
               <>
                 <button
                   onClick={saveSuccess ? restartGame : handleSkipSave}
-                  className="nes-btn pixel-font flex-1"
+                  className="nes-btn pixel-font flex-1 text-xs sm:text-sm"
                   disabled={isSavingSession}
                 >
                   {saveSuccess ? 'PLAY AGAIN' : 'TRY AGAIN'}
                 </button>
                 <button
                   onClick={() => {
-                    if (saveSuccess) {
-                      window.location.reload();
-                    } else {
-                      const confirmed = window.confirm(
-                        '⚠️ WARNING: You will lose ALL progress!\n\n' +
-                        `• Your ${finalScore} points will be lost\n` +
-                        `• Your ${sessionCoins} coins will be lost\n` +
-                        `• Stage progress will NOT be saved\n\n` +
-                        'Are you sure you want to go to main menu without saving?'
-                      );
-
-                      if (confirmed) {
-                        window.location.reload();
-                      }
-                    }
+                    playSound('button');
+                    window.location.reload();
                   }}
-                  className="nes-btn pixel-font flex-1"
+                  className="nes-btn pixel-font flex-1 text-xs sm:text-sm"
                   disabled={isSavingSession}
                 >
                   MAIN MENU
@@ -305,15 +249,6 @@ export function GameOverModal() {
           </div>
         </div>
 
-        {/* Progress Note */}
-        <div className="mt-4 text-center">
-          <p className="pixel-font text-xs text-gray-600">
-            {isSavingSession ?
-              '⛓️ Saving to Hedera blockchain...' :
-              '💡 Choose to save progress on blockchain or continue playing locally'
-            }
-          </p>
-        </div>
       </div>
     </div>
   );
