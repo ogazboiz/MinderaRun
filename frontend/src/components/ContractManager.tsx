@@ -781,6 +781,19 @@ export function ContractManager() {
           return false;
         }
       },
+
+      purchaseItem: async (itemName: string, itemCost: number): Promise<boolean> => {
+        try {
+          console.log(`🛒 Purchasing ${itemName} for ${itemCost} coins...`);
+          // TODO: Implement actual purchase logic with smart contract
+          // For now, just return false as the feature is coming soon
+          console.warn('⚠️ Purchase feature is not yet implemented');
+          return false;
+        } catch (error) {
+          console.error('❌ Purchase failed:', error);
+          return false;
+        }
+      },
     };
 
     setContractCallbacks(callbacks);
