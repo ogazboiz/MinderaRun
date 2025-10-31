@@ -992,8 +992,8 @@ export function SimpleGameCanvas() {
   }, [isPlaying]);
 
   return (
-    <div className="flex justify-center items-center min-h-[400px] md:min-h-[600px] relative z-10 w-full px-2 sm:px-4">
-      <div className="relative w-full max-w-[1200px] md:max-w-[1400px] lg:max-w-[1600px]">
+    <div className="flex justify-center items-center min-h-[300px] sm:min-h-[400px] md:min-h-[500px] relative z-10 w-full px-2 sm:px-4">
+      <div className="relative w-full max-w-full sm:max-w-[600px] md:max-w-[800px] lg:max-w-[1000px]">
         <canvas
           ref={canvasRef}
           width={800}
@@ -1003,23 +1003,24 @@ export function SimpleGameCanvas() {
             background: 'linear-gradient(to bottom, #87CEEB, #98FB98)',
             imageRendering: 'pixelated',
             maxWidth: '100%',
-            height: 'auto'
+            height: 'auto',
+            aspectRatio: '4/3'
           }}
         />
 
         {/* Game Overlay UI */}
         {!isPlaying && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-            <div className="nes-container with-title is-centered pixel-art mx-4 max-w-sm" style={{ backgroundColor: 'rgba(255, 255, 255, 0.95)' }}>
-              <p className="title pixel-font text-primary text-sm sm:text-base">MINDORA RUNNER</p>
-              <h2 className="pixel-font text-base sm:text-xl mb-3 sm:mb-4 text-gray-800">Ready to Learn & Earn?</h2>
-              <p className="text-xs sm:text-sm mb-4 sm:mb-6 text-gray-700 pixel-font">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/60 p-2">
+            <div className="nes-container with-title is-centered pixel-art w-full max-w-xs sm:max-w-sm" style={{ backgroundColor: 'rgba(255, 255, 255, 0.95)' }}>
+              <p className="title pixel-font text-primary text-xs sm:text-sm">MINDORA RUNNER</p>
+              <h2 className="pixel-font text-sm sm:text-base md:text-lg mb-2 sm:mb-3 text-gray-800">Ready to Learn & Earn?</h2>
+              <p className="text-xs mb-3 sm:mb-4 text-gray-700 pixel-font">
                 <span className="hidden sm:inline">Press SPACE to jump and collect coins!</span>
-                <span className="sm:hidden">Tap screen to jump and collect coins!</span>
+                <span className="sm:hidden">Tap to jump & collect coins!</span>
               </p>
               <button
                 onClick={() => { playSound('start'); setPlaying(true); }}
-                className="nes-btn is-primary pixel-font text-xs sm:text-base"
+                className="nes-btn is-primary pixel-font text-xs sm:text-sm w-full"
               >
                 ▶ START GAME
               </button>

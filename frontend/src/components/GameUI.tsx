@@ -8,9 +8,11 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt, useWalletCl
 import { parseEther } from 'viem';
 import { getContractAddresses } from '@/config/contracts';
 import { hederaService } from '@/services/hederaService';
+import { useGameSounds } from '@/hooks/useGameSounds';
 
 export function GameUI() {
   const router = useRouter();
+  const { playSound } = useGameSounds();
 
   // Use Zustand selectors for guaranteed reactivity
   const isPlaying = useGameStore(state => state.isPlaying);
@@ -282,45 +284,45 @@ export function GameUI() {
 
   return (
     <>
-      {/* Simple HUD - just essentials */}
-      <div className="absolute top-4 left-4 right-4 z-20 pointer-events-none">
-        <div className="flex justify-between items-center">
-          {/* Score */}
-          <div className="pixel-font text-white text-xl bg-black/50 px-3 py-1 rounded">
-            Score: {score}
-          </div>
-
+      {/* Top Left - Stage and Score */}
+      <div className="absolute top-2 sm:top-4 left-2 sm:left-4 z-20 flex flex-col gap-1 sm:gap-2">
+        <div className="pixel-font text-white">
           {/* Stage */}
-          <div className="pixel-font text-white text-xl bg-black/50 px-3 py-1 rounded">
-            Stage {currentStage}
+          <div className="pixel-font text-white text-sm sm:text-base md:text-lg bg-black/50 px-2 py-0.5 sm:px-3 sm:py-1 rounded">
+            🎮 Stage {currentStage}
           </div>
-
+          
+          {/* Score */}
+          <div className="pixel-font text-white text-sm sm:text-base md:text-lg bg-black/50 px-2 py-0.5 sm:px-3 sm:py-1 rounded mt-1 sm:mt-2">
+            ⭐ {score}
+          </div>
+          
           {/* Coins - Show saved + session */}
-          <div className="pixel-font text-white text-xl bg-black/50 px-3 py-1 rounded">
+          <div className="pixel-font text-white text-sm sm:text-base md:text-lg bg-black/50 px-2 py-0.5 sm:px-3 sm:py-1 rounded">
             🪙 {(player?.inGameCoins || 0)} {sessionCoins > 0 && `+${sessionCoins}`}
           </div>
         </div>
       </div>
 
       {/* Bottom right - Buttons */}
-      <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-2">
+      <div className="absolute bottom-2 sm:bottom-4 right-2 sm:right-4 z-20 flex flex-col gap-1 sm:gap-2">
         <button
-          onClick={() => setShowShop(true)}
-          className="nes-btn is-warning pixel-font pointer-events-auto text-xs"
+          onClick={() => { playSound('button'); setShowShop(true); }}
+          className="nes-btn is-warning pixel-font pointer-events-auto text-xs py-1 px-2 sm:px-3"
         >
           🎮 SHOP
         </button>
         <button
-          onClick={() => router.push('/marketplace')}
-          className="nes-btn is-success pixel-font pointer-events-auto text-xs"
+          onClick={() => { playSound('button'); router.push('/marketplace'); }}
+          className="nes-btn is-success pixel-font pointer-events-auto text-xs py-1 px-2 sm:px-3"
         >
-          🛒 MARKETPLACE
+          🛒 MARKET
         </button>
         <button
-          onClick={() => setShowNFTs(true)}
-          className="nes-btn is-primary pixel-font pointer-events-auto text-xs"
+          onClick={() => { playSound('button'); setShowNFTs(true); }}
+          className="nes-btn is-primary pixel-font pointer-events-auto text-xs py-1 px-2 sm:px-3"
         >
-          📦 COLLECTION
+          📦 NFTs
         </button>
       </div>
 
@@ -504,13 +506,13 @@ export function GameUI() {
 
             <div className="flex space-x-2">
               <button
-                onClick={() => { setShowNFTs(false); setShowLeaderboard(true); }}
+                onClick={() => { playSound('button'); setShowNFTs(false); setShowLeaderboard(true); }}
                 className="nes-btn is-success pixel-font flex-1 text-xs"
               >
                 LEADERBOARD
               </button>
               <button
-                onClick={() => setShowNFTs(false)}
+                onClick={() => { playSound('button'); setShowNFTs(false); }}
                 className="nes-btn pixel-font flex-1 text-xs"
               >
                 CLOSE
@@ -603,7 +605,7 @@ export function GameUI() {
             </div>
 
             <button
-              onClick={() => setShowLeaderboard(false)}
+              onClick={() => { playSound('button'); setShowLeaderboard(false); }}
               className="nes-btn is-primary pixel-font w-full"
             >
               CLOSE
@@ -650,7 +652,7 @@ export function GameUI() {
             </div>
 
             <button
-              onClick={() => setShowShop(false)}
+              onClick={() => { playSound('button'); setShowShop(false); }}
               className="nes-btn is-primary pixel-font w-full"
             >
               CLOSE

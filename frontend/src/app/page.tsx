@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SimpleGameCanvas } from '@/components/SimpleGameCanvas';
 import { NewWalletConnection } from '@/components/NewWalletConnection';
 import { GameUI } from '@/components/GameUI';
@@ -10,18 +10,42 @@ import { GameOverModal } from '@/components/GameOverModal';
 import { PixelBackground } from '@/components/PixelBackground';
 import { ContractManager } from '@/components/ContractManager';
 import { useGameStore } from '@/store/gameStore';
+import { useGameSounds } from '@/hooks/useGameSounds';
+import { Volume2, VolumeX } from 'lucide-react';
 
 export default function Home() {
   const { isConnected, player } = useGameStore();
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const { startBackgroundMusic, stopBackgroundMusic, toggleAllAudio, isAudioEnabled } = useGameSounds();
 
+  // Start background music when component mounts
+  useEffect(() => {
+    // Delay to allow user interaction (browsers block autoplay)
+    const timer = setTimeout(() => {
+      startBackgroundMusic();
+    }, 1000);
 
+    return () => {
+      clearTimeout(timer);
+      stopBackgroundMusic();
+    };
+  }, [startBackgroundMusic, stopBackgroundMusic]);
 
   return (
     <div className="min-h-screen text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Contract Manager - handles contract callbacks */}
       <ContractManager />
 
+      {/* Audio Control */}
+      <div className="fixed top-4 right-4 z-50">
+        <button
+          onClick={toggleAllAudio}
+          className="nes-btn is-primary p-2 sm:p-3"
+          title={isAudioEnabled ? 'Mute All Audio' : 'Unmute All Audio'}
+        >
+          {isAudioEnabled ? <Volume2 className="w-5 h-5 sm:w-6 sm:h-6" /> : <VolumeX className="w-5 h-5 sm:w-6 sm:h-6" />}
+        </button>
+      </div>
 
       {/* Pixel Art Background */}
       <PixelBackground />
