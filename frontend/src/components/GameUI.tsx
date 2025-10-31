@@ -285,42 +285,42 @@ export function GameUI() {
   return (
     <>
       {/* Top Left - Stage and Score */}
-      <div className="absolute top-2 sm:top-4 left-2 sm:left-4 z-20 flex flex-col gap-1 sm:gap-2">
+      <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-20 flex flex-col gap-1 sm:gap-2">
         <div className="pixel-font text-white">
           {/* Stage */}
-          <div className="pixel-font text-white text-sm sm:text-base md:text-lg bg-black/50 px-2 py-0.5 sm:px-3 sm:py-1 rounded">
+          <div className="pixel-font text-white text-xs sm:text-base md:text-xl bg-black/50 px-2 py-1 sm:px-3 rounded">
             🎮 Stage {currentStage}
           </div>
           
           {/* Score */}
-          <div className="pixel-font text-white text-sm sm:text-base md:text-lg bg-black/50 px-2 py-0.5 sm:px-3 sm:py-1 rounded mt-1 sm:mt-2">
+          <div className="pixel-font text-white text-xs sm:text-base md:text-xl bg-black/50 px-2 py-1 sm:px-3 rounded mt-1 sm:mt-2">
             ⭐ {score}
           </div>
           
           {/* Coins - Show saved + session */}
-          <div className="pixel-font text-white text-sm sm:text-base md:text-lg bg-black/50 px-2 py-0.5 sm:px-3 sm:py-1 rounded">
+          <div className="pixel-font text-white text-xs sm:text-base md:text-xl bg-black/50 px-2 py-1 sm:px-3 rounded">
             🪙 {(player?.inGameCoins || 0)} {sessionCoins > 0 && `+${sessionCoins}`}
           </div>
         </div>
       </div>
 
       {/* Bottom right - Buttons */}
-      <div className="absolute bottom-2 sm:bottom-4 right-2 sm:right-4 z-20 flex flex-col gap-1 sm:gap-2">
+      <div className="absolute bottom-2 left-2 right-2 sm:bottom-4 sm:left-auto sm:right-4 z-20 flex flex-row sm:flex-col gap-1 sm:gap-2 pointer-events-auto">
         <button
           onClick={() => { playSound('button'); setShowShop(true); }}
-          className="nes-btn is-warning pixel-font pointer-events-auto text-xs py-1 px-2 sm:px-3"
+          className="nes-btn is-warning pixel-font text-xs py-1 px-2 sm:px-3 flex-1 sm:flex-none"
         >
           🎮 SHOP
         </button>
         <button
           onClick={() => { playSound('button'); router.push('/marketplace'); }}
-          className="nes-btn is-success pixel-font pointer-events-auto text-xs py-1 px-2 sm:px-3"
+          className="nes-btn is-success pixel-font text-xs py-1 px-2 sm:px-3 flex-1 sm:flex-none"
         >
           🛒 MARKET
         </button>
         <button
           onClick={() => { playSound('button'); setShowNFTs(true); }}
-          className="nes-btn is-primary pixel-font pointer-events-auto text-xs py-1 px-2 sm:px-3"
+          className="nes-btn is-primary pixel-font text-xs py-1 px-2 sm:px-3 flex-1 sm:flex-none"
         >
           📦 NFTs
         </button>
@@ -342,17 +342,12 @@ export function GameUI() {
 
       {/* Collection Modal - Simple */}
       {showNFTs && (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 pointer-events-auto">
-          <div className="nes-container pixel-art max-w-sm w-full mx-4" style={{ backgroundColor: 'white' }}>
-            <div className="text-center mb-4">
-              <p className="pixel-font text-xl text-gray-800 mb-2">Collection</p>
-              <p className="pixel-font text-lg">🪙 {player?.inGameCoins || 0} Game Coins</p>
-              <p className="pixel-font text-sm text-gray-600">💎 {player?.tokensEarned || 0} QuestCoin Tokens</p>
-              {/* Debug player data */}
-              <p className="pixel-font text-xs text-blue-600">
-                DEBUG: Stage {player?.currentStage || 0} | Completed: [{player?.completedStages?.join(', ') || 'none'}]
-              </p>
-              
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 pointer-events-auto p-2 sm:p-4">
+          <div className="nes-container pixel-art max-w-[95%] sm:max-w-md w-full" style={{ backgroundColor: 'white', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="text-center mb-3 sm:mb-4">
+              <p className="pixel-font text-base sm:text-lg md:text-xl text-gray-800 mb-2">Collection</p>
+              <p className="pixel-font text-sm sm:text-base">🪙 {player?.inGameCoins || 0} Game Coins</p>
+              <p className="pixel-font text-xs sm:text-sm text-gray-600">💎 {player?.tokensEarned || 0} QuestCoin Tokens</p>
             </div>
 
             <div className="space-y-2 mb-4">
@@ -504,16 +499,16 @@ export function GameUI() {
               })()}
             </div>
 
-            <div className="flex space-x-2">
+            <div className="flex gap-2">
               <button
                 onClick={() => { playSound('button'); setShowNFTs(false); setShowLeaderboard(true); }}
-                className="nes-btn is-success pixel-font flex-1 text-xs"
+                className="nes-btn is-success pixel-font flex-1 text-xs sm:text-sm py-1"
               >
                 LEADERBOARD
               </button>
               <button
                 onClick={() => { playSound('button'); setShowNFTs(false); }}
-                className="nes-btn pixel-font flex-1 text-xs"
+                className="nes-btn pixel-font flex-1 text-xs sm:text-sm py-1"
               >
                 CLOSE
               </button>
@@ -524,11 +519,11 @@ export function GameUI() {
 
       {/* Leaderboard Modal - Enhanced */}
       {showLeaderboard && (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 pointer-events-auto p-4">
-          <div className="nes-container pixel-art w-full max-w-2xl mx-auto" style={{ backgroundColor: 'white', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div className="text-center mb-4">
-              <p className="pixel-font text-2xl text-gray-800 mb-1">🏆 Global Leaderboard</p>
-              <p className="pixel-font text-sm text-gray-600">Top Players - All Stages Combined</p>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 pointer-events-auto p-2 sm:p-4">
+          <div className="nes-container pixel-art w-full max-w-[95%] sm:max-w-xl md:max-w-2xl mx-auto" style={{ backgroundColor: 'white', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="text-center mb-3 sm:mb-4">
+              <p className="pixel-font text-base sm:text-xl md:text-2xl text-gray-800 mb-1">🏆 Leaderboard</p>
+              <p className="pixel-font text-xs sm:text-sm text-gray-600">Top Players - All Stages</p>
             </div>
 
             <div className="space-y-2 mb-4">
@@ -616,24 +611,24 @@ export function GameUI() {
 
       {/* In-Game Shop Modal - Coming Soon */}
       {showShop && (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 pointer-events-auto p-4">
-          <div className="nes-container pixel-art w-full max-w-lg mx-auto" style={{ backgroundColor: 'white', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div className="text-center mb-4">
-              <p className="pixel-font text-2xl text-gray-800 mb-1">🎮 In-Game Shop</p>
-              <p className="pixel-font text-lg text-green-600">🪙 {player?.inGameCoins || 0} Coins Available</p>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 pointer-events-auto p-2 sm:p-4">
+          <div className="nes-container pixel-art w-full max-w-[95%] sm:max-w-md md:max-w-lg mx-auto" style={{ backgroundColor: 'white', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="text-center mb-3 sm:mb-4">
+              <p className="pixel-font text-base sm:text-lg md:text-xl text-gray-800 mb-1">🎮 Shop</p>
+              <p className="pixel-font text-sm sm:text-base text-green-600">🪙 {player?.inGameCoins || 0} Coins</p>
             </div>
 
-            <div className="space-y-3 mb-4">
+            <div className="space-y-2 sm:space-y-3 mb-3 sm:mb-4">
               {/* Coming Soon Message */}
-              <div className="text-center py-12">
-                <div className="text-8xl mb-6">🚧</div>
-                <div className="pixel-font text-2xl text-gray-800 mb-4 font-bold">COMING SOON</div>
-                <div className="pixel-font text-base text-gray-600 mb-6 px-4">
+              <div className="text-center py-6 sm:py-12">
+                <div className="text-5xl sm:text-6xl md:text-7xl mb-4 sm:mb-6">🚧</div>
+                <div className="pixel-font text-lg sm:text-xl md:text-2xl text-gray-800 mb-3 sm:mb-4 font-bold">COMING SOON</div>
+                <div className="pixel-font text-xs sm:text-sm md:text-base text-gray-600 mb-4 sm:mb-6 px-4">
                   Spend your in-game coins on power-ups and cosmetics!
                 </div>
 
-                <div className="bg-purple-50 border-2 border-purple-300 rounded p-4 text-left max-w-sm mx-auto">
-                  <p className="pixel-font text-sm text-purple-800 font-bold mb-2">🎁 Coming Items:</p>
+                <div className="bg-purple-50 border-2 border-purple-300 rounded p-3 sm:p-4 text-left max-w-sm mx-auto">
+                  <p className="pixel-font text-xs sm:text-sm text-purple-800 font-bold mb-2">🎁 Coming Items:</p>
                   <ul className="pixel-font text-xs text-purple-700 space-y-1">
                     <li>• 🚀 Speed Boost - Run faster</li>
                     <li>• 🛡️ Shield - Block obstacles</li>
@@ -643,7 +638,7 @@ export function GameUI() {
                   </ul>
                 </div>
 
-                <div className="mt-6 px-4">
+                <div className="mt-4 sm:mt-6 px-4">
                   <p className="pixel-font text-xs text-gray-500">
                     Power-ups will be added in the next update!
                   </p>
@@ -653,7 +648,7 @@ export function GameUI() {
 
             <button
               onClick={() => { playSound('button'); setShowShop(false); }}
-              className="nes-btn is-primary pixel-font w-full"
+              className="nes-btn is-primary pixel-font w-full text-xs sm:text-sm py-1"
             >
               CLOSE
             </button>
