@@ -85,6 +85,15 @@ export interface GameState {
   currentQuestion: Question | null;
   quizAnswers: { [questionId: string]: number };
 
+  // Notification state
+  notification: {
+    id: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+    title: string;
+    message: string;
+    duration?: number;
+  } | null;
+
   // Actions
   setPlayer: (player: Player | null) => void;
   setConnected: (connected: boolean) => void;
@@ -103,6 +112,10 @@ export interface GameState {
   setGameOver: (reason: 'obstacle' | 'question' | 'completed', finalScore: number, finalCoins: number) => void;
   restartGame: () => void;
   resetGame: () => void;
+  
+  // Notification actions
+  showNotification: (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string, duration?: number) => void;
+  hideNotification: () => void;
 
   // Contract interaction callbacks - will be set by components using hooks
   setContractCallbacks: (callbacks: {
@@ -174,6 +187,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   showQuiz: false,
   currentQuestion: null,
   quizAnswers: {},
+  notification: null,
   contractCallbacks: {},
 
   // Actions
@@ -219,6 +233,18 @@ export const useGameStore = create<GameState>((set, get) => ({
       [questionId]: answer
     }
   })),
+
+  showNotification: (type, title, message, duration = 5000) => set({
+    notification: {
+      id: Date.now().toString(),
+      type,
+      title,
+      message,
+      duration
+    }
+  }),
+
+  hideNotification: () => set({ notification: null }),
 
   setGameOver: (reason, finalScore, finalCoins) => set({
     isGameOver: true,
