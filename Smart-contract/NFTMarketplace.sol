@@ -20,7 +20,7 @@ contract NFTMarketplace is ReentrancyGuard {
     // MyNFT contract address
     IERC721 public nftContract;
 
-    // Mapping from token ID to listing
+    // Mapping from token ID to lissting
     mapping(uint256 => Listing) public listings;
 
     // Events
