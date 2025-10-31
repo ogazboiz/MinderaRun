@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { questions } from '@/data/questions';
-import { useGameSounds } from '@/hooks/useGameSounds';
+import { useGameSounds } from '../hooks/useGameSounds';
 
 export function SimpleGameCanvas() {
   const { playSound } = useGameSounds();
